@@ -24,30 +24,31 @@
  */
 
 int main(){
-    int sock = socket(AF_INET, SOCK_STREAM, 0); // TCP IPv4
-    struct sockaddr_in server = {0};
-    server.sin_family = AF_INET;
-
-    // htons is used to convert short int to be usable by the socket
-    // socket -> short in htons() convert the sin_port to short int
-    server.sin_port = htons(8080);
-
-    // Convert the char * form of ip to ip usable by the socket "presentation to network" 
-    // AF_INET stands for IPv4 address 
-    inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
-
-    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) == -1) {    
-        perror("connect");    
-        close(sock);    
+    // Create the socket
+    int client = socket(AF_INET, SOCK_STREAM, 0); // TCP IPv4
+    if(client == -1){
+        perror("socket");
         return 1;
     }
 
-    send(sock, "Bonjour", 7, 0);
-    char buffer[256];
-    ssize_t n = recv(sock, buffer, sizeof(buffer), 0);
-    
-    if (n > 0) {    
-        printf("Reçu %zd octets\n", n);
+    struct sockaddr_in serv_addr = {0};
+    serv_addr.sin_family = AF_INET;
+
+    // htons is used to convert short int to be usable by the socket
+    // socket -> short in htons() convert the sin_port to short int
+    serv_addr.sin_port = htons(6969);
+
+    // Convert the char * form of ip to ip usable by the socket "presentation to network" 
+    // AF_INET stands for IPv4 address 
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+
+    // Connect
+    if (connect(client, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {    
+        perror("connect");    
+        close(client);    
+        return 1;
     }
-    close(sock);
+
+    send(client, "Bonjour", 7, 0);
+    close(client);
 }
