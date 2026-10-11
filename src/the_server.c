@@ -26,12 +26,17 @@
 
 int main(){
     // Create the socket
-    int client = socket(AF_INET, SOCK_STREAM, 0); // TCP IPv4
-    if(client == -1){
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0); // TCP IPv4
+    if(server_fd == -1){
         perror("socket");
         return 1;
     }
 
+    // OPtion=1 relaunch the server after it is stopped
+    int opt = 1;
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    // Create th address where the server listen on
     struct sockaddr_in serv_addr = {0};
     serv_addr.sin_family = AF_INET;
 
@@ -39,41 +44,53 @@ int main(){
     // socket -> short in htons() convert the sin_port to short int
     serv_addr.sin_port = htons(6969);
 
+    // serv_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // this line is the same as (1)
+
     // Convert the char * form of ip to ip usable by the socket "presentation to network" 
     // AF_INET stands for IPv4 address 
-    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr); // (1)
 
-    // Connect
-    if (connect(client, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {    
-        perror("connect");    
-        close(client);    
+    // bind the file descriptor not connect (to be able to accept connection)
+    if (bind(server_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {    
+        perror("bind");    
+        close(server_fd);    
         return 1;
     }
 
-    // Interface to communicate with the server
-    char msg[1024];
-    while (fgets(msg, sizeof(msg), stdin) != NULL)
-    {
-        size_t rest = strlen(msg);
-        const char * pos = msg;
-
-        // send() can't send all the msg one time
-        // loop till all data are sent
-
-        while (rest > 0)
-        {
-            ssize_t sent = send(client, pos, rest, 0);
-            if(sent <= 0){
-                perror("send");
-                close(client);
-                return 1;
-            }
-
-            pos += sent;
-            rest -= (size_t)sent;
-        }
-        
+    // Listen on 127.0.0.1 
+    if(listen(server_fd, 5) == -1){
+        perror("bind");
+        close(server_fd);
+        return 1;
     }
-    close(client);
+
+    // Msg
+    printf("Server listen on 127.0.0.1:6969\n");
+
+    // THe code is blocked here till a client connect to the address
+    int client_fd = accept(server_fd, NULL, NULL);
+    if(client_fd == -1){
+        perror("accept");
+        close(server_fd);
+        return 1;
+    }
+
+    printf("Client connected.\n");
+
+    char buf[1024];
+    ssize_t n;
+    while ((n = recv(client_fd, buf, sizeof(buf), 0)) > 0)
+    {
+        fwrite(buf, 1, n, stdout);
+        fflush(stdout);
+    }
+    
+    if(n == -1)
+        perror("recv");
+
+    printf("client disconnected...\n");
+
+    close(client_fd);
+    close(server_fd);
     return 0;
 }
