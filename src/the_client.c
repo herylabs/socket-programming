@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 // Included for handling socket: socket, connect, bind, listen, accept, send, recv, sockaddr
 #include <sys/socket.h>
@@ -49,6 +50,30 @@ int main(){
         return 1;
     }
 
-    send(client, "Bonjour", 7, 0);
+    // Interface to communicate with the server
+    char msg[1024];
+    while (fgets(msg, sizeof(msg), stdin) != NULL)
+    {
+        size_t rest = strlen(msg);
+        const char * pos = msg;
+
+        // send() can't send all the msg one time
+        // loop till all data are sent
+
+        while (rest > 0)
+        {
+            ssize_t sent = send(client, pos, rest, 0);
+            if(sent <= 0){
+                perror("send");
+                close(client);
+                return 1;
+            }
+
+            pos += sent;
+            rest -= (size_t)sent;
+        }
+        
+    }
     close(client);
+    return 0;
 }
